@@ -60,4 +60,5 @@ integration:
 security:
   jwt:
     secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+    jwks-uri: ${JWT_JWKS_URI:http://10.10.10.5:5001/.well-known/jwks.json}
     dev-mode: ${JWT_DEV_MODE:true}
