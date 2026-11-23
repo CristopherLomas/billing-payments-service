@@ -1,6 +1,8 @@
 package com.corredornorte.payments.integration;
 
 import com.corredornorte.payments.exception.ExternalIntegrationException;
+import com.corredornorte.payments.integration.dto.IssueTicketRequest;
+import com.corredornorte.payments.integration.dto.IssueTicketResponse;
 import com.corredornorte.payments.integration.dto.QrActivationRequest;
 import com.corredornorte.payments.integration.dto.SeatReleaseRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -47,36 +49,41 @@ public class HttpExternalBookingGateway implements ExternalBookingGateway {
 
     @Override
     public void notifyPaymentApproved(String reservationId, String tripId, UUID paymentId, String userId) {
-        String endpoint = qrServiceUrl + "/api/v1/tickets/qr/activate";
-        QrActivationRequest request = new QrActivationRequest(reservationId, tripId, paymentId, userId);
+        String endpoint = qrServiceUrl + "/api/tickets";
+        IssueTicketRequest request = new IssueTicketRequest(reservationId);
 
-        log.info("[HTTP INTEGRATION] >> Notificando aprobación a QR Service (Grupo 4): URL={}, payload={}", endpoint, request);
+        log.info("[HTTP INTEGRATION] >> Emitiendo boleto en Tickets & QR Service (Grupo 4 - Diego Chiguano): URL={}, bookingId={}", endpoint, reservationId);
 
         try {
-            restClient.post()
+            IssueTicketResponse response = restClient.post()
                     .uri(endpoint)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(request)
                     .retrieve()
-                    .onStatus(HttpStatusCode::isError, (req, response) -> {
-                        String responseBody = new String(response.getBody().readAllBytes());
-                        throw new ExternalIntegrationException("qr-service", response.getStatusCode().value(), responseBody);
+                    .onStatus(HttpStatusCode::isError, (req, resp) -> {
+                        String responseBody = new String(resp.getBody().readAllBytes());
+                        throw new ExternalIntegrationException("tickets-service", resp.getStatusCode().value(), responseBody);
                     })
-                    .toBodilessEntity();
+                    .body(IssueTicketResponse.class);
 
-            log.info("[HTTP INTEGRATION] << Aprobación confirmada por QR Service para reservationId={}", reservationId);
+            if (response != null && response.data() != null) {
+                log.info("[HTTP INTEGRATION] << Boleto emitido exitosamente por Tickets Service: ticketId={}, qrToken={}",
+                        response.data().ticketId(), response.data().qrToken());
+            } else {
+                log.info("[HTTP INTEGRATION] << Boleto confirmado por Tickets Service para bookingId={}", reservationId);
+            }
         } catch (ExternalIntegrationException e) {
-            log.error("[HTTP INTEGRATION] Error de negocio retornado por QR Service: {}", e.getMessage());
+            log.error("[HTTP INTEGRATION] Error de negocio retornado por Tickets Service: {}", e.getMessage());
             throw e;
         } catch (ResourceAccessException e) {
-            log.error("[HTTP INTEGRATION] Fallo de conectividad o timeout con QR Service en {}: {}", endpoint, e.getMessage());
-            throw new ExternalIntegrationException("qr-service", "Timeout o conexión rechazada: " + e.getMessage(), e);
+            log.error("[HTTP INTEGRATION] Fallo de conectividad o timeout con Tickets Service en {}: {}", endpoint, e.getMessage());
+            throw new ExternalIntegrationException("tickets-service", "Timeout o conexión rechazada: " + e.getMessage(), e);
         } catch (RestClientResponseException e) {
-            log.error("[HTTP INTEGRATION] Error HTTP desde QR Service: {} - {}", e.getStatusCode(), e.getResponseBodyAsString());
-            throw new ExternalIntegrationException("qr-service", e.getStatusCode().value(), e.getResponseBodyAsString());
+            log.error("[HTTP INTEGRATION] Error HTTP desde Tickets Service: {} - {}", e.getStatusCode(), e.getResponseBodyAsString());
+            throw new ExternalIntegrationException("tickets-service", e.getStatusCode().value(), e.getResponseBodyAsString());
         } catch (Exception e) {
-            log.error("[HTTP INTEGRATION] Error inesperado al invocar QR Service: {}", e.getMessage(), e);
-            throw new ExternalIntegrationException("qr-service", "Fallo inesperado: " + e.getMessage(), e);
+            log.error("[HTTP INTEGRATION] Error inesperado al invocar Tickets Service: {}", e.getMessage(), e);
+            throw new ExternalIntegrationException("tickets-service", "Fallo inesperado: " + e.getMessage(), e);
         }
     }
 

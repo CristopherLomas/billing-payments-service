@@ -18,7 +18,7 @@ public class MockExternalBookingGateway implements ExternalBookingGateway {
     @Override
     public void notifyPaymentApproved(String reservationId, String tripId, UUID paymentId, String userId) {
         log.info("[MOCK INTEGRATION] >> NOTIFICACIÓN PAGO APROBADO: "
-                + "reservationId={}, tripId={}, paymentId={}, userId={} -> Simulando emisión de boleto y QR.",
+                + "bookingId={}, tripId={}, paymentId={}, userId={} -> Simulando emisión de boleto en POST /api/tickets (Grupo 4 - Diego Chiguano).",
                 reservationId, tripId, paymentId, userId);
     }
 

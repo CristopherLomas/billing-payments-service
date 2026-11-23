@@ -211,4 +211,9 @@ El microservicio `billing-payments-service` se conecta dinámicamente con los m�
      - Devuelve automáticamente el asiento del bus (1-40) al estado `Available`.
 
 3. **Módulo 4: Booking, Tickets & QR (Diego Chiguano - Grupo 4)**
-   - **Activación de Boleto y Emisión QR:** Al confirmar y aprobar un pago (`PAID`), el gateway notifica a `POST http://localhost:8081/api/v1/tickets/qr/activate` para activar el boleto y generar el código QR escaneable por el chofer.
+   - **Emisión de Boleto y QR al Confirmar Pago:** Al aprobar un pago (`PAID`), el gateway invoca automáticamente el endpoint de Diego:
+     - **Método**: `POST`
+     - **URL**: `http://backend:8080/api/tickets` (o `http://localhost:8080/api/tickets`)
+     - **Body JSON**: `{"bookingId": "<reservationId>"}`
+     - **Respuesta (HTTP 201 Created)**: Genera `ticketId`, asigna `qrToken`, confirma la reserva y emite el boleto QR.
+     - **Consulta opcional de imagen QR**: `GET /api/tickets/{ticketId}/qr` (SVG / Base64).
