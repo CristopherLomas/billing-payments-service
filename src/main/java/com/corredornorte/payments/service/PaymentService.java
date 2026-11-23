@@ -82,6 +82,7 @@ public class PaymentService {
                 .amount(request.amount().setScale(2, RoundingMode.HALF_UP))
                 .paymentMethod(request.paymentMethod())
                 .referenceNumber(referenceToSave)
+                .seatNumber(request.seatNumber())
                 .status(initialStatus)
                 .build();
 
@@ -235,6 +236,8 @@ public class PaymentService {
                 updatedPayment.getReservationId(),
                 updatedPayment.getTripId(),
                 updatedPayment.getId(),
+                updatedPayment.getUserId(),
+                updatedPayment.getSeatNumber(),
                 reason.trim()
         );
 

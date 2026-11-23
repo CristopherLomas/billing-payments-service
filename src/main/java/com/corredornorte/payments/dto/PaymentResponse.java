@@ -19,6 +19,7 @@ public record PaymentResponse(
     BigDecimal amount,
     PaymentMethod paymentMethod,
     String referenceNumber,
+    Integer seatNumber,
     PaymentStatus status,
     String reviewedBy,
     OffsetDateTime reviewedAt,
@@ -26,6 +27,27 @@ public record PaymentResponse(
     OffsetDateTime createdAt,
     OffsetDateTime updatedAt
 ) {
+    /**
+     * Constructor de compatibilidad hacia atrás (sin seatNumber).
+     */
+    public PaymentResponse(
+        UUID id,
+        String reservationId,
+        String tripId,
+        String userId,
+        BigDecimal amount,
+        PaymentMethod paymentMethod,
+        String referenceNumber,
+        PaymentStatus status,
+        String reviewedBy,
+        OffsetDateTime reviewedAt,
+        String rejectionReason,
+        OffsetDateTime createdAt,
+        OffsetDateTime updatedAt
+    ) {
+        this(id, reservationId, tripId, userId, amount, paymentMethod, referenceNumber, null, status, reviewedBy, reviewedAt, rejectionReason, createdAt, updatedAt);
+    }
+
     public static PaymentResponse fromEntity(Payment payment) {
         if (payment == null) {
             return null;
@@ -38,6 +60,7 @@ public record PaymentResponse(
             payment.getAmount(),
             payment.getPaymentMethod(),
             payment.getReferenceNumber(),
+            payment.getSeatNumber(),
             payment.getStatus(),
             payment.getReviewedBy(),
             payment.getReviewedAt(),

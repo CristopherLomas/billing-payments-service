@@ -70,6 +70,7 @@ class PaymentServiceTest {
                 .amount(new BigDecimal("12.50"))
                 .paymentMethod(PaymentMethod.BANK_TRANSFER)
                 .referenceNumber("REF-TRANSFER-123")
+                .seatNumber(14)
                 .status(PaymentStatus.PENDING_VERIFICATION)
                 .createdAt(now)
                 .updatedAt(now)
@@ -248,6 +249,31 @@ class PaymentServiceTest {
             assertThat(response.status()).isEqualTo(PaymentStatus.PENDING_VERIFICATION);
             assertThat(response.referenceNumber()).isEqualTo("REF-BANCO-001");
         }
+
+        @Test
+        @DisplayName("Creación exitosa de pago incluyendo seatNumber para integración con Trips Service")
+        void createPaymentWithSeatNumberSuccess() {
+            CreatePaymentRequest request = new CreatePaymentRequest(
+                    "RES-3000",
+                    "4c988b7b-a9bd-45cf-b3e8-26380bf4198b",
+                    new BigDecimal("10.50"),
+                    PaymentMethod.DEUNA,
+                    "DEUNA-SEAT-14",
+                    14
+            );
+
+            when(paymentRepository.existsByReferenceNumber("DEUNA-SEAT-14")).thenReturn(false);
+            when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> {
+                Payment p = invocation.getArgument(0);
+                p.setId(UUID.randomUUID());
+                return p;
+            });
+
+            PaymentResponse response = paymentService.createPayment(request, "USR-888");
+
+            assertThat(response).isNotNull();
+            assertThat(response.seatNumber()).isEqualTo(14);
+        }
     }
 
     @Nested
@@ -305,6 +331,8 @@ class PaymentServiceTest {
                     pendingPayment.getReservationId(),
                     pendingPayment.getTripId(),
                     pendingPayment.getId(),
+                    pendingPayment.getUserId(),
+                    pendingPayment.getSeatNumber(),
                     "Número de cuenta no coincide"
             );
         }
@@ -344,7 +372,7 @@ class PaymentServiceTest {
                     .isInstanceOf(InvalidPaymentStateException.class)
                     .hasMessageContaining("PAID");
 
-            verify(externalBookingGateway, never()).notifyPaymentRejected(anyString(), anyString(), any(), anyString());
+            verify(externalBookingGateway, never()).notifyPaymentRejected(anyString(), anyString(), any(), any(), any(), anyString());
             verify(paymentAuditLogRepository, never()).save(any());
         }
 
@@ -357,7 +385,7 @@ class PaymentServiceTest {
                     .isInstanceOf(InvalidPaymentStateException.class)
                     .hasMessageContaining("REJECTED");
 
-            verify(externalBookingGateway, never()).notifyPaymentRejected(anyString(), anyString(), any(), anyString());
+            verify(externalBookingGateway, never()).notifyPaymentRejected(anyString(), anyString(), any(), any(), any(), anyString());
             verify(paymentAuditLogRepository, never()).save(any());
         }
     }

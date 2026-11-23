@@ -182,7 +182,8 @@ billing-payments-service/
 │   │   │   ├── repository/         # Repositorios Spring Data JPA con agregaciones JPQL
 │   │   │   └── service/            # Lógica de estados, verificación, auditoría y reportes
 │   │   └── resources/
-│   │       ├── db/migration/       # Migraciones Flyway SQL Server (V1__init_payments_schema.sql)
+│   │       ├── db/migration/       # Migraciones Flyway SQL Server (V1__init_payments_schema.sql, V2__add_seat_number_to_payments.sql)
+│   │       ├── static/demo.html    # Demo interactiva Tailwind CSS para pruebas en vivo
 │   │       └── application.yml     # Configuración centralizada con variables de entorno
 │   └── test/java/com/corredornorte/payments/
 │       ├── controller/             # Pruebas de integración MockMvc para endpoints REST
@@ -192,3 +193,22 @@ billing-payments-service/
 ├── Dockerfile                      # Empaquetado multi-stage (Maven Temurin 21 -> Temurin 21 JRE Alpine)
 └── pom.xml                         # Dependencias Maven (Spring Boot 3.3.5, Java 21)
 ```
+
+---
+
+## 9. Integración Inter-Microservicios (Corredor Norte)
+
+El microservicio `billing-payments-service` se conecta dinámicamente con los módulos del sistema:
+
+1. **Módulo 1: Auth & Users (David Cadena - Grupo 1)**
+   - **Autenticación Asimétrica RSA (RS256):** Validación de firmas públicas JWT mediante el endpoint JWKS en vivo: `http://10.10.10.5:5001/.well-known/jwks.json`.
+   - **Fallback HMAC-SHA:** Soporta tokens simétricos de desarrollo local mediante `dev-mode: true`.
+
+2. **Módulo 3: Trips & Scheduling (Johan Almeida - Grupo 3)**
+   - **Liberación de Asiento al Rechazar Pago:** Cuando un Administrador rechaza un comprobante inválido, el gateway invoca:
+     - `DELETE http://10.10.10.13:5001/api/v1/trips/{tripId}/seats/{seatNumber}/hold`
+     - Body JSON: `{"userId": "<userId>"}`
+     - Devuelve automáticamente el asiento del bus (1-40) al estado `Available`.
+
+3. **Módulo 4: Booking, Tickets & QR (Diego Chiguano - Grupo 4)**
+   - **Activación de Boleto y Emisión QR:** Al confirmar y aprobar un pago (`PAID`), el gateway notifica a `POST http://localhost:8081/api/v1/tickets/qr/activate` para activar el boleto y generar el código QR escaneable por el chofer.

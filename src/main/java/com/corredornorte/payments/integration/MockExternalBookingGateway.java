@@ -23,9 +23,14 @@ public class MockExternalBookingGateway implements ExternalBookingGateway {
     }
 
     @Override
-    public void notifyPaymentRejected(String reservationId, String tripId, UUID paymentId, String reason) {
+    public void notifyPaymentRejected(String reservationId, String tripId, UUID paymentId, String userId, Integer seatNumber, String reason) {
         log.warn("[MOCK INTEGRATION] >> NOTIFICACIÓN PAGO RECHAZADO: "
-                + "reservationId={}, tripId={}, paymentId={}, motivo='{}' -> Simulando liberación de asiento en Booking Service.",
-                reservationId, tripId, paymentId, reason);
+                + "reservationId={}, tripId={}, paymentId={}, userId={}, seatNumber={}, motivo='{}' -> Simulando liberación de asiento en Trips Service (Grupo 3 - Johan Almeida).",
+                reservationId, tripId, paymentId, userId, seatNumber, reason);
+    }
+
+    @Override
+    public void notifyPaymentRejected(String reservationId, String tripId, UUID paymentId, String reason) {
+        notifyPaymentRejected(reservationId, tripId, paymentId, null, null, reason);
     }
 }

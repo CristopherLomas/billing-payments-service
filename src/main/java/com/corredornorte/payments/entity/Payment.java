@@ -52,6 +52,9 @@ public class Payment {
     @Column(name = "reference_number", length = 100)
     private String referenceNumber;
 
+    @Column(name = "seat_number")
+    private Integer seatNumber;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 30)
     private PaymentStatus status;

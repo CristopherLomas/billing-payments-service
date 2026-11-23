@@ -2,6 +2,8 @@ package com.corredornorte.payments.dto;
 
 import com.corredornorte.payments.entity.PaymentMethod;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
@@ -24,5 +26,13 @@ public record CreatePaymentRequest(
     @NotNull(message = "El método de pago es obligatorio")
     PaymentMethod paymentMethod,
 
-    String referenceNumber
-) {}
+    String referenceNumber,
+
+    @Min(value = 1, message = "El número de asiento debe estar entre 1 y 40")
+    @Max(value = 40, message = "El número de asiento debe estar entre 1 y 40")
+    Integer seatNumber
+) {
+    public CreatePaymentRequest(String reservationId, String tripId, BigDecimal amount, PaymentMethod paymentMethod, String referenceNumber) {
+        this(reservationId, tripId, amount, paymentMethod, referenceNumber, null);
+    }
+}
