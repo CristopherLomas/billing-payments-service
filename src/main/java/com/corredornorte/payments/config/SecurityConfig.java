@@ -60,10 +60,10 @@ public class SecurityConfig {
                         auth.requestMatchers("/api/v1/dev/token", "/demo.html").permitAll();
                     }
 
-                    // Rutas administrativas protegidas estrictamente para ADMIN
-                    auth.requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-                        // Rutas de pasajeros accesibles para usuarios autenticados (PASAJERO o ADMIN)
-                        .requestMatchers("/api/v1/payments/**").hasAnyRole("PASAJERO", "ADMIN")
+                    // Rutas administrativas protegidas para ADMIN o STAFF
+                    auth.requestMatchers("/api/v1/admin/**").hasAnyRole("ADMIN", "STAFF")
+                        // Rutas de pasajeros accesibles para usuarios autenticados (PASAJERO, PASSENGER, STAFF o ADMIN)
+                        .requestMatchers("/api/v1/payments/**").hasAnyRole("PASAJERO", "PASSENGER", "STAFF", "ADMIN")
                         .anyRequest().authenticated();
                 })
                 .exceptionHandling(exceptions -> exceptions
