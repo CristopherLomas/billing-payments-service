@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo En Vivo | Billing & Payments Service - Corredor Norte</title>
+    <!-- Tailwind CSS v3 via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#312e81',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        [x-cloak] { display: none !important; }
+        .tab-btn.active {
+            border-bottom: 2px solid #4f46e5;
+            color: #4f46e5;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col font-sans text-slate-800">
+
+    <!-- BARRA SUPERIOR (SIMULADOR DE SESIÓN) -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Branding -->
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-lg bg-gradient-to-tr from-brand-600 to-indigo-400 flex items-center justify-center text-white font-bold shadow-md">
+                        CN
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold text-slate-900 leading-tight">Billing & Payments Service</h1>
+                        <p class="text-xs text-slate-500 font-medium">Grupo 5 • Corredor Norte (Port 8085)</p>
+                    </div>
+                </div>
+
+                <!-- Session Switcher Buttons -->
+                <div class="flex items-center space-x-3">
+                    <div class="text-right hidden md:block">
+                        <span class="text-xs text-slate-400 block font-medium">SESIÓN ACTIVA</span>
+                        <div class="flex items-center space-x-2">
+                            <span id="current-user-badge" class="font-mono text-xs font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                                Sin sesión
+                            </span>
+                            <span id="current-role-badge" class="text-xs font-bold px-2 py-0.5 rounded uppercase tracking-wider bg-slate-200 text-slate-600">
+                                Ninguno
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center space-x-2 border-l border-slate-200 pl-3">
+                        <button onclick="loginAs('pasajero-01', 'PASAJERO')" id="btn-login-pasajero"
+                                class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-indigo-50 hover:text-brand-600 text-slate-700 transition border border-slate-200 shadow-sm flex items-center space-x-1">
+                            <span>👤</span>
+                            <span>Pasajero</span>
+                        </button>
+                        <button onclick="loginAs('admin-01', 'ADMIN')" id="btn-login-admin"
+                                class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-purple-50 hover:text-purple-700 text-slate-700 transition border border-slate-200 shadow-sm flex items-center space-x-1">
+                            <span>🛡️</span>
+                            <span>Admin</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TABS DE NAVEGACIÓN -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <nav class="flex space-x-8 -mb-px">
+                <button onclick="switchTab('tab-pasajero')" id="nav-tab-pasajero"
+                        class="tab-btn active py-3 px-1 text-sm text-slate-500 hover:text-brand-600 transition flex items-center space-x-2">
+                    <span>🎫</span>
+                    <span>Vista Pasajero (Pagos)</span>
+                </button>
+                <button onclick="switchTab('tab-admin')" id="nav-tab-admin"
+                        class="tab-btn py-3 px-1 text-sm text-slate-500 hover:text-brand-600 transition flex items-center space-x-2">
+                    <span>🛡️</span>
+                    <span>Bandeja Admin (Aprobaciones)</span>
+                </button>
+                <button onclick="switchTab('tab-reportes')" id="nav-tab-reportes"
+                        class="tab-btn py-3 px-1 text-sm text-slate-500 hover:text-brand-600 transition flex items-center space-x-2">
+                    <span>📊</span>
+                    <span>Recaudación & Conciliación</span>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- ============================================================== -->
+        <!-- PESTAÑA 1: VISTA PASAJERO -->
+        <!-- ============================================================== -->
+        <section id="tab-pasajero" class="space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- FORMULARIO CREAR PAGO -->
+                <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                    <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+                        <h2 class="text-base font-bold text-slate-900 flex items-center space-x-2">
+                            <span>💳</span>
+                            <span>Registrar Pago</span>
+                        </h2>
+                        <span class="text-xs bg-indigo-50 text-brand-600 px-2 py-0.5 rounded font-mono font-medium">POST /payments</span>
+                    </div>
+
+                    <form id="payment-form" onsubmit="handleCreatePayment(event)" class="mt-4 space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">ID Reserva</label>
+                            <input type="text" id="p-reservationId" required
+                                   class="w-full text-sm px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none"
+                                   placeholder="RES-1001">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">ID Viaje / Frecuencia</label>
+                            <input type="text" id="p-tripId" required
+                                   class="w-full text-sm px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none"
+                                   placeholder="TRIP-UIO-IBARRA-10">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Monto ($ USD)</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 font-bold">$</span>
+                                <input type="number" step="0.01" min="0.01" id="p-amount" required
+                                       class="w-full text-sm pl-8 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none font-mono"
+                                       placeholder="12.50">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Método de Pago</label>
+                            <select id="p-method" onchange="handleMethodChange()"
+                                    class="w-full text-sm px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none bg-white">
+                                <option value="DEUNA">DeUna! (App Móvil / QR)</option>
+                                <option value="BANK_TRANSFER">Transferencia Bancaria</option>
+                                <option value="CASH">Efectivo (Pago al abordar)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">
+                                Número de Comprobante / Referencia
+                            </label>
+                            <input type="text" id="p-reference" required
+                                   class="w-full text-sm px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none uppercase font-mono"
+                                   placeholder="Ej: DEUNA-78901">
+                            <p id="ref-help-text" class="text-xs text-slate-400 mt-1">
+                                Obligatorio para DeUna y Transferencias bancarias.
+                            </p>
+                        </div>
+
+                        <button type="submit" id="btn-submit-payment"
+                                class="w-full py-2.5 px-4 bg-brand-600 hover:bg-brand-700 text-white font-medium text-sm rounded-lg shadow-sm transition flex items-center justify-center space-x-2">
+                            <span>Enviar Comprobante</span>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- TABLA MIS PAGOS -->
+                <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col">
+                    <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+                        <div>
+                            <h2 class="text-base font-bold text-slate-900 flex items-center space-x-2">
+                                <span>📋</span>
+                                <span>Mis Pagos Registrados</span>
+                            </h2>
+                            <p class="text-xs text-slate-500">Historial paginado del pasajero activo (<span id="my-payments-user" class="font-mono font-semibold">pasajero-01</span>)</p>
+                        </div>
+                        <button onclick="loadMyPayments()" class="px-3 py-1.5 text-xs font-medium text-brand-600 hover:bg-brand-50 rounded-lg border border-brand-200 transition flex items-center space-x-1">
+                            <span>🔄</span>
+                            <span>Actualizar Estado</span>
+                        </button>
+                    </div>
+
+                    <div class="mt-4 flex-1 overflow-x-auto">
+                        <table class="min-w-full divide-y divide-slate-200 text-sm">
+                            <thead class="bg-slate-50 text-slate-600 font-semibold text-xs uppercase tracking-wider">
+                                <tr>
+                                    <th class="px-3 py-2 text-left">ID / Reserva</th>
+                                    <th class="px-3 py-2 text-left">Viaje</th>
+                                    <th class="px-3 py-2 text-right">Monto</th>
+                                    <th class="px-3 py-2 text-left">Método</th>
+                                    <th class="px-3 py-2 text-left">Comprobante</th>
+                                    <th class="px-3 py-2 text-center">Estado</th>
+                                    <th class="px-3 py-2 text-left">Fecha UTC</th>
+                                </tr>
+                            </thead>
+                            <tbody id="my-payments-tbody" class="divide-y divide-slate-100 text-slate-700 font-medium text-xs">
+                                <tr>
+                                    <td colspan="7" class="py-8 text-center text-slate-400">
+                                        Cargando pagos...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================== -->
+        <!-- PESTAÑA 2: BANDEJA ADMIN (APROBACIONES) -->
+        <!-- ============================================================== -->
+        <section id="tab-admin" class="space-y-6 hidden">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-4">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-900 flex items-center space-x-2">
+                            <span>🛡️</span>
+                            <span>Bandeja de Pagos Pendientes (FIFO)</span>
+                        </h2>
+                        <p class="text-xs text-slate-500">Verificación manual de transferencias y depósitos antes de activar boleto QR</p>
+                    </div>
+
+                    <!-- Filtros -->
+                    <div class="flex items-center space-x-3">
+                        <div class="flex items-center space-x-2">
+                            <label class="text-xs text-slate-500 font-medium">Método:</label>
+                            <select id="admin-filter-method" onchange="loadPendingPayments()"
+                                    class="text-xs px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-brand-500">
+                                <option value="">Todos los métodos</option>
+                                <option value="DEUNA">DeUna!</option>
+                                <option value="BANK_TRANSFER">Transferencia Bancaria</option>
+                                <option value="CASH">Efectivo</option>
+                            </select>
+                        </div>
+                        <button onclick="loadPendingPayments()" class="px-3 py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-50 rounded-lg border border-purple-200 transition flex items-center space-x-1">
+                            <span>🔄</span>
+                            <span>Refrescar</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tabla de pendientes -->
+                <div class="mt-4 overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-200 text-sm">
+                        <thead class="bg-slate-50 text-slate-600 font-semibold text-xs uppercase tracking-wider">
+                            <tr>
+                                <th class="px-3 py-2.5 text-left">ID Pago</th>
+                                <th class="px-3 py-2.5 text-left">Usuario</th>
+                                <th class="px-3 py-2.5 text-left">Reserva / Viaje</th>
+                                <th class="px-3 py-2.5 text-right">Monto</th>
+                                <th class="px-3 py-2.5 text-left">Método</th>
+                                <th class="px-3 py-2.5 text-left">Comprobante</th>
+                                <th class="px-3 py-2.5 text-center">Estado</th>
+                                <th class="px-3 py-2.5 text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pending-payments-tbody" class="divide-y divide-slate-100 text-slate-700 text-xs">
+                            <tr>
+                                <td colspan="8" class="py-8 text-center text-slate-400">
+                                    Cargando bandeja de pendientes...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================== -->
+        <!-- PESTAÑA 3: RECAUDACIÓN Y CONCILIACIÓN -->
+        <!-- ============================================================== -->
+        <section id="tab-reportes" class="space-y-6 hidden">
+            <!-- Barra de selección de fecha -->
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center space-x-3">
+                    <label class="text-xs font-bold text-slate-600 uppercase">Fecha de Consulta:</label>
+                    <input type="date" id="report-date"
+                           class="text-sm px-3 py-1.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500">
+                </div>
+                <button onclick="loadFinancialReports()"
+                        class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold rounded-lg shadow-sm transition flex items-center space-x-1.5">
+                    <span>📊</span>
+                    <span>Consultar Reportes Financieros</span>
+                </button>
+            </div>
+
+            <!-- TARJETAS KPI -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Recaudado -->
+                <div class="bg-white p-5 rounded-xl border border-emerald-200 shadow-sm bg-gradient-to-br from-white to-emerald-50">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-emerald-800 uppercase">Recaudado (PAID)</span>
+                        <span class="text-emerald-500 text-lg">💰</span>
+                    </div>
+                    <div id="kpi-paid" class="text-2xl font-black text-emerald-700 mt-2 font-mono">$0.00</div>
+                    <p class="text-xs text-emerald-600 mt-1">Ingresos confirmados en caja</p>
+                </div>
+
+                <!-- Pendiente -->
+                <div class="bg-white p-5 rounded-xl border border-amber-200 shadow-sm bg-gradient-to-br from-white to-amber-50">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-amber-800 uppercase">Pendiente</span>
+                        <span class="text-amber-500 text-lg">⏳</span>
+                    </div>
+                    <div id="kpi-pending" class="text-2xl font-black text-amber-700 mt-2 font-mono">$0.00</div>
+                    <p class="text-xs text-amber-600 mt-1">En verificación o cobro en efectivo</p>
+                </div>
+
+                <!-- Rechazado -->
+                <div class="bg-white p-5 rounded-xl border border-rose-200 shadow-sm bg-gradient-to-br from-white to-rose-50">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-rose-800 uppercase">Rechazado</span>
+                        <span class="text-rose-500 text-lg">❌</span>
+                    </div>
+                    <div id="kpi-rejected" class="text-2xl font-black text-rose-700 mt-2 font-mono">$0.00</div>
+                    <p class="text-xs text-rose-600 mt-1">Comprobantes inválidos</p>
+                </div>
+
+                <!-- Total Transacciones -->
+                <div class="bg-white p-5 rounded-xl border border-indigo-200 shadow-sm bg-gradient-to-br from-white to-indigo-50">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-indigo-800 uppercase">Total Operaciones</span>
+                        <span class="text-indigo-500 text-lg">🧾</span>
+                    </div>
+                    <div id="kpi-count" class="text-2xl font-black text-indigo-700 mt-2 font-mono">0</div>
+                    <p class="text-xs text-indigo-600 mt-1">Transacciones procesadas</p>
+                </div>
+            </div>
+
+            <!-- DESGLOSE POR MÉTODO Y CONCILIACIÓN DIARIA -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Desglose por método -->
+                <div class="lg:col-span-1 bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                    <h3 class="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2 mb-3">
+                        Desglose por Canal de Pago
+                    </h3>
+                    <div id="method-breakdown-container" class="space-y-3">
+                        <p class="text-xs text-slate-400">Sin datos de desglose</p>
+                    </div>
+                </div>
+
+                <!-- Tabla de Conciliación -->
+                <div class="lg:col-span-2 bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                    <h3 class="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2 mb-3 flex justify-between items-center">
+                        <span>Detalle de Conciliación Diaria (Cuadre de Caja)</span>
+                        <span id="reconcil-count-badge" class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-mono">0 pagos</span>
+                    </h3>
+                    <div class="overflow-x-auto max-h-80">
+                        <table class="min-w-full divide-y divide-slate-200 text-xs">
+                            <thead class="bg-slate-50 text-slate-600 uppercase font-semibold sticky top-0">
+                                <tr>
+                                    <th class="px-2.5 py-2 text-left">Reserva</th>
+                                    <th class="px-2.5 py-2 text-right">Monto</th>
+                                    <th class="px-2.5 py-2 text-left">Método</th>
+                                    <th class="px-2.5 py-2 text-left">Comprobante</th>
+                                    <th class="px-2.5 py-2 text-center">Estado</th>
+                                    <th class="px-2.5 py-2 text-left">Hora UTC</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reconcil-tbody" class="divide-y divide-slate-100 font-medium">
+                                <tr>
+                                    <td colspan="6" class="py-6 text-center text-slate-400">Seleccione una fecha y pulse Consultar.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ============================================================== -->
+    <!-- MODAL DE AUDITORÍA -->
+    <!-- ============================================================== -->
+    <div id="audit-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200">
+            <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+                <div class="flex items-center space-x-2">
+                    <span class="text-purple-600 text-lg">📜</span>
+                    <h3 class="text-sm font-bold text-slate-900">Historial Inmutable de Auditoría</h3>
+                </div>
+                <button onclick="closeAuditModal()" class="text-slate-400 hover:text-slate-600 font-bold text-lg">&times;</button>
+            </div>
+            <div class="p-6 max-h-96 overflow-y-auto">
+                <div id="audit-timeline" class="space-y-4">
+                    <!-- Se inyecta dinámicamente -->
+                </div>
+            </div>
+            <div class="px-6 py-3 bg-slate-50 border-t border-slate-200 text-right">
+                <button onclick="closeAuditModal()" class="px-4 py-2 text-xs font-semibold bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg transition">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- TOAST NOTIFICATIONS CONTAINER -->
+    <!-- ============================================================== -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2 max-w-sm w-full"></div>
+
+    <!-- ============================================================== -->
+    <!-- JAVASCRIPT VANILLA -->
+    <!-- ============================================================== -->
+    <script>
+        // Estado de la sesión en memoria
+        let currentAuth = {
+            token: null,
+            userId: null,
+            role: null
+        };
+
+        const API_BASE = '/api/v1';
+
+        // -------------------------------------------------------------
+        // INICIALIZACIÓN
+        // -------------------------------------------------------------
+        document.addEventListener('DOMContentLoaded', () => {
+            // Inicializar fecha de reportes con la fecha local de hoy
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('report-date').value = today;
+
+            // Iniciar por defecto como pasajero-01 para demo inmediata
+            loginAs('pasajero-01', 'PASAJERO');
+
+            // Autogenerar valores de reserva aleatorios
+            resetPaymentFormDefaults();
+        });
+
+        function resetPaymentFormDefaults() {
+            const rnd = Math.floor(1000 + Math.random() * 9000);
+            document.getElementById('p-reservationId').value = `RES-${rnd}`;
+            document.getElementById('p-tripId').value = `TRIP-NORTE-${rnd % 5 + 1}`;
+            document.getElementById('p-amount').value = (10 + (rnd % 15) * 0.50).toFixed(2);
+            document.getElementById('p-reference').value = `DEUNA-${rnd}`;
+        }
+
+        // -------------------------------------------------------------
+        // SIMULADOR DE SESIÓN (DEV TOKENS)
+        // -------------------------------------------------------------
+        async function loginAs(userId, role) {
+            try {
+                const response = await fetch(`${API_BASE}/dev/token?userId=${encodeURIComponent(userId)}&role=${encodeURIComponent(role)}`, {
+                    method: 'POST'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Error ${response.status} al generar token de desarrollo`);
+                }
+
+                const data = await response.json();
+                currentAuth = {
+                    token: data.accessToken || data.token,
+                    userId: data.userId,
+                    role: data.role
+                };
+
+                // Actualizar badges visuales
+                const userBadge = document.getElementById('current-user-badge');
+                const roleBadge = document.getElementById('current-role-badge');
+                userBadge.textContent = currentAuth.userId;
+                roleBadge.textContent = currentAuth.role;
+
+                if (currentAuth.role === 'ADMIN') {
+                    roleBadge.className = 'text-xs font-bold px-2 py-0.5 rounded uppercase tracking-wider bg-purple-100 text-purple-700 border border-purple-300';
+                    document.getElementById('btn-login-admin').className = 'px-3 py-1.5 rounded-lg text-xs font-medium bg-purple-600 text-white transition border border-purple-700 shadow-sm flex items-center space-x-1';
+                    document.getElementById('btn-login-pasajero').className = 'px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-indigo-50 hover:text-brand-600 text-slate-700 transition border border-slate-200 shadow-sm flex items-center space-x-1';
+                } else {
+                    roleBadge.className = 'text-xs font-bold px-2 py-0.5 rounded uppercase tracking-wider bg-brand-100 text-brand-700 border border-brand-300';
+                    document.getElementById('btn-login-pasajero').className = 'px-3 py-1.5 rounded-lg text-xs font-medium bg-brand-600 text-white transition border border-brand-700 shadow-sm flex items-center space-x-1';
+                    document.getElementById('btn-login-admin').className = 'px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-purple-50 hover:text-purple-700 text-slate-700 transition border border-slate-200 shadow-sm flex items-center space-x-1';
+                }
+
+                showToast('info', 'Sesión iniciada', `Autenticado como ${userId} (${role})`);
+
+                // Actualizar contexto de vista actual
+                const myPaymentsUserEl = document.getElementById('my-payments-user');
+                if (myPaymentsUserEl) myPaymentsUserEl.textContent = userId;
+
+                loadMyPayments();
+                if (currentAuth.role === 'ADMIN') {
+                    loadPendingPayments();
+                }
+            } catch (err) {
+                showToast('error', 'Fallo de autenticación', err.message);
+            }
+        }
+
+        // -------------------------------------------------------------
+        // NAVEGACIÓN ENTRE PESTAÑAS
+        // -------------------------------------------------------------
+        function switchTab(tabId) {
+            ['tab-pasajero', 'tab-admin', 'tab-reportes'].forEach(id => {
+                const el = document.getElementById(id);
+                const btn = document.getElementById(`nav-${id}`);
+                if (id === tabId) {
+                    el.classList.remove('hidden');
+                    btn.classList.add('active');
+                } else {
+                    el.classList.add('hidden');
+                    btn.classList.remove('active');
+                }
+            });
+
+            // Cargar datos según pestaña seleccionada
+            if (tabId === 'tab-pasajero') {
+                loadMyPayments();
+            } else if (tabId === 'tab-admin') {
+                loadPendingPayments();
+            } else if (tabId === 'tab-reportes') {
+                loadFinancialReports();
+            }
+        }
+
+        // -------------------------------------------------------------
+        // CONTROL DEL FORMULARIO DE PAGO
+        // -------------------------------------------------------------
+        function handleMethodChange() {
+            const method = document.getElementById('p-method').value;
+            const refInput = document.getElementById('p-reference');
+            const helpText = document.getElementById('ref-help-text');
+
+            if (method === 'CASH') {
+                refInput.value = '';
+                refInput.disabled = true;
+                refInput.required = false;
+                refInput.placeholder = '(No aplica en efectivo)';
+                helpText.textContent = 'Pago en efectivo: se cobrará directamente en taquilla o al abordar.';
+            } else {
+                refInput.disabled = false;
+                refInput.required = true;
+                refInput.placeholder = method === 'DEUNA' ? 'Ej: DEUNA-78901' : 'Ej: TRANSF-PICHINCHA-123';
+                helpText.textContent = `Obligatorio para comprobantes de ${method}. Debe ser único.`;
+            }
+        }
+
+        async function handleCreatePayment(event) {
+            event.preventDefault();
+            if (!currentAuth.token) {
+                showToast('error', 'Sin sesión', 'Inicia sesión como Pasajero primero.');
+                return;
+            }
+
+            const method = document.getElementById('p-method').value;
+            const payload = {
+                reservationId: document.getElementById('p-reservationId').value.trim(),
+                tripId: document.getElementById('p-tripId').value.trim(),
+                amount: parseFloat(document.getElementById('p-amount').value),
+                paymentMethod: method,
+                referenceNumber: method === 'CASH' ? null : document.getElementById('p-reference').value.trim()
+            };
+
+            const submitBtn = document.getElementById('btn-submit-payment');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Procesando...';
+
+            try {
+                const response = await fetch(`${API_BASE}/payments`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentAuth.token}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.status === 201) {
+                    const data = await response.json();
+                    showToast('success', '¡Pago Registrado!', `Estado: ${data.status}. ID: ${data.id.substring(0, 8)}...`);
+                    resetPaymentFormDefaults();
+                    loadMyPayments();
+                } else {
+                    const error = await response.json();
+                    showProblemDetailError(error, response.status);
+                }
+            } catch (err) {
+                showToast('error', 'Error de Conexión', err.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Enviar Comprobante';
+            }
+        }
+
+        // -------------------------------------------------------------
+        // CARGAR MIS PAGOS (PASAJERO)
+        // -------------------------------------------------------------
+        async function loadMyPayments() {
+            if (!currentAuth.token) return;
+            const tbody = document.getElementById('my-payments-tbody');
+
+            try {
+                const response = await fetch(`${API_BASE}/payments/my-payments?page=0&size=20`, {
+                    headers: { 'Authorization': `Bearer ${currentAuth.token}` }
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    showProblemDetailError(err, response.status);
+                    return;
+                }
+
+                const data = await response.json();
+                const content = data.content || [];
+
+                if (content.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-400">No hay pagos registrados para ${currentAuth.userId}.</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = content.map(p => `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="px-3 py-2.5">
+                            <span class="font-bold text-slate-900">${p.reservationId}</span>
+                            <span class="block text-[10px] text-slate-400 font-mono">${p.id.substring(0, 8)}...</span>
+                        </td>
+                        <td class="px-3 py-2.5 text-slate-600">${p.tripId}</td>
+                        <td class="px-3 py-2.5 text-right font-mono font-bold text-slate-900">$${p.amount.toFixed(2)}</td>
+                        <td class="px-3 py-2.5">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700">${p.paymentMethod}</span>
+                        </td>
+                        <td class="px-3 py-2.5 font-mono text-[11px] text-slate-500">${p.referenceNumber || '<span class="text-slate-300">N/A</span>'}</td>
+                        <td class="px-3 py-2.5 text-center">${getStatusBadge(p.status)}</td>
+                        <td class="px-3 py-2.5 text-slate-500 text-[11px]">${formatDate(p.createdAt)}</td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-rose-500">Error al cargar pagos: ${err.message}</td></tr>`;
+            }
+        }
+
+        // -------------------------------------------------------------
+        // CARGAR BANDEJA ADMIN (PENDIENTES)
+        // -------------------------------------------------------------
+        async function loadPendingPayments() {
+            if (!currentAuth.token) return;
+            const tbody = document.getElementById('pending-payments-tbody');
+            const methodFilter = document.getElementById('admin-filter-method').value;
+            const url = `${API_BASE}/admin/payments/pending?page=0&size=20${methodFilter ? `&method=${methodFilter}` : ''}`;
+
+            try {
+                const response = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${currentAuth.token}` }
+                });
+
+                if (response.status === 403) {
+                    showToast('error', 'Acceso Denegado (403)', 'Debes cambiar a sesión de Admin (admin-01) para ver la bandeja.');
+                    tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-rose-500 font-medium">⚠️ Acceso Restringido. Se requiere rol ADMIN.</td></tr>`;
+                    return;
+                }
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    showProblemDetailError(err, response.status);
+                    return;
+                }
+
+                const data = await response.json();
+                const content = data.content || [];
+
+                if (content.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-slate-400">🎉 No hay pagos pendientes en este momento.</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = content.map(p => `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="px-3 py-2.5 font-mono text-[11px] text-slate-500">${p.id.substring(0, 8)}...</td>
+                        <td class="px-3 py-2.5 font-semibold text-slate-800">${p.userId}</td>
+                        <td class="px-3 py-2.5">
+                            <span class="font-bold text-slate-900">${p.reservationId}</span>
+                            <span class="block text-[10px] text-slate-400">${p.tripId}</span>
+                        </td>
+                        <td class="px-3 py-2.5 text-right font-mono font-bold text-slate-900">$${p.amount.toFixed(2)}</td>
+                        <td class="px-3 py-2.5">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700">${p.paymentMethod}</span>
+                        </td>
+                        <td class="px-3 py-2.5 font-mono text-[11px] text-indigo-600 font-semibold">${p.referenceNumber || 'N/A'}</td>
+                        <td class="px-3 py-2.5 text-center">${getStatusBadge(p.status)}</td>
+                        <td class="px-3 py-2.5 text-center space-x-1">
+                            <button onclick="approvePayment('${p.id}')"
+                                    class="px-2 py-1 text-[11px] font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded transition shadow-xs">
+                                ✓ Aprobar
+                            </button>
+                            <button onclick="rejectPayment('${p.id}')"
+                                    class="px-2 py-1 text-[11px] font-semibold bg-rose-600 hover:bg-rose-700 text-white rounded transition shadow-xs">
+                                ✕ Rechazar
+                            </button>
+                            <button onclick="openAuditModal('${p.id}')"
+                                    class="px-2 py-1 text-[11px] font-semibold bg-purple-100 hover:bg-purple-200 text-purple-700 rounded transition">
+                                📜 Auditoría
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="8" class="py-4 text-center text-rose-500">${err.message}</td></tr>`;
+            }
+        }
+
+        // -------------------------------------------------------------
+        // ACCIONES ADMIN: APROBAR / RECHAZAR / AUDITORÍA
+        // -------------------------------------------------------------
+        async function approvePayment(id) {
+            const notes = prompt('Notas de aprobación (opcional):', 'Comprobante verificado con éxito');
+            if (notes === null) return; // cancelado
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/payments/${id}/approve`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentAuth.token}`
+                    },
+                    body: JSON.stringify({ notes: notes.trim() })
+                });
+
+                if (response.ok) {
+                    showToast('success', 'Pago Aprobado', 'El pago pasó a estado PAID y se notificó la emisión del boleto QR.');
+                    loadPendingPayments();
+                } else {
+                    const err = await response.json();
+                    showProblemDetailError(err, response.status);
+                }
+            } catch (err) {
+                showToast('error', 'Error al aprobar', err.message);
+            }
+        }
+
+        async function rejectPayment(id) {
+            const reason = prompt('Motivo obligatorio de rechazo:', 'Monto no coincide con el valor de la reserva');
+            if (reason === null) return; // cancelado
+            if (!reason.trim()) {
+                alert('El motivo de rechazo es estrictamente obligatorio.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/payments/${id}/reject`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentAuth.token}`
+                    },
+                    body: JSON.stringify({ reason: reason.trim() })
+                });
+
+                if (response.ok) {
+                    showToast('warning', 'Pago Rechazado', 'El pago pasó a estado REJECTED y se notificó la liberación del asiento.');
+                    loadPendingPayments();
+                } else {
+                    const err = await response.json();
+                    showProblemDetailError(err, response.status);
+                }
+            } catch (err) {
+                showToast('error', 'Error al rechazar', err.message);
+            }
+        }
+
+        async function openAuditModal(id) {
+            const timeline = document.getElementById('audit-timeline');
+            timeline.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">Cargando bitácora...</p>';
+            document.getElementById('audit-modal').classList.remove('hidden');
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/payments/${id}/audit`, {
+                    headers: { 'Authorization': `Bearer ${currentAuth.token}` }
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    showProblemDetailError(err, response.status);
+                    closeAuditModal();
+                    return;
+                }
+
+                const logs = await response.json();
+                if (logs.length === 0) {
+                    timeline.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">Sin registros de auditoría.</p>';
+                    return;
+                }
+
+                timeline.innerHTML = logs.map((log, index) => `
+                    <div class="relative pl-6 border-l-2 border-indigo-200 pb-3">
+                        <div class="absolute -left-1.5 top-1 w-3 h-3 rounded-full bg-brand-600"></div>
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="font-bold text-slate-900">${log.newStatus}</span>
+                            <span class="text-[10px] text-slate-400">${formatDate(log.changedAt)}</span>
+                        </div>
+                        <p class="text-xs text-slate-600 mt-0.5">
+                            Cambio: <span class="font-mono text-slate-500">${log.previousStatus || 'INICIO'}</span> &rarr; <span class="font-mono text-slate-900 font-bold">${log.newStatus}</span>
+                        </p>
+                        <p class="text-[11px] text-slate-500 mt-0.5">Por: <span class="font-semibold text-slate-700">${log.changedBy}</span></p>
+                        ${log.notes ? `<p class="text-[11px] text-slate-500 italic mt-0.5 bg-slate-50 p-1.5 rounded border border-slate-100">"${log.notes}"</p>` : ''}
+                    </div>
+                `).join('');
+            } catch (err) {
+                timeline.innerHTML = `<p class="text-xs text-rose-500 text-center py-4">${err.message}</p>`;
+            }
+        }
+
+        function closeAuditModal() {
+            document.getElementById('audit-modal').classList.add('hidden');
+        }
+
+        // -------------------------------------------------------------
+        // CARGAR REPORTES DE RECAUDACIÓN Y CONCILIACIÓN
+        // -------------------------------------------------------------
+        async function loadFinancialReports() {
+            if (!currentAuth.token) return;
+            const targetDate = document.getElementById('report-date').value;
+            if (!targetDate) {
+                showToast('warning', 'Fecha requerida', 'Seleccione una fecha válida');
+                return;
+            }
+
+            const fromIso = `${targetDate}T00:00:00Z`;
+            const toIso = `${targetDate}T23:59:59Z`;
+
+            try {
+                // 1. Cargar reporte de recaudación
+                const revRes = await fetch(`${API_BASE}/admin/payments/reports/revenue?from=${encodeURIComponent(fromIso)}&to=${encodeURIComponent(toIso)}`, {
+                    headers: { 'Authorization': `Bearer ${currentAuth.token}` }
+                });
+
+                if (revRes.status === 403) {
+                    showToast('error', 'Acceso Denegado (403)', 'Se requiere rol ADMIN para ver reportes financieros.');
+                    return;
+                }
+
+                if (revRes.ok) {
+                    const revData = await revRes.json();
+                    document.getElementById('kpi-paid').textContent = `$${revData.totalPaid.toFixed(2)}`;
+                    document.getElementById('kpi-pending').textContent = `$${revData.totalPending.toFixed(2)}`;
+                    document.getElementById('kpi-rejected').textContent = `$${revData.totalRejected.toFixed(2)}`;
+                    document.getElementById('kpi-count').textContent = revData.totalTransactions;
+
+                    // Desglose
+                    const methodContainer = document.getElementById('method-breakdown-container');
+                    methodContainer.innerHTML = revData.breakdownByMethod.map(m => `
+                        <div class="p-3 rounded-lg border border-slate-100 bg-slate-50 flex items-center justify-between">
+                            <div>
+                                <span class="font-bold text-xs text-slate-800">${m.paymentMethod}</span>
+                                <span class="text-[11px] text-slate-500 block">${m.transactionCount} operaciones</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-sm font-mono font-bold text-emerald-700">$${m.paidAmount.toFixed(2)}</span>
+                                <span class="text-[10px] text-slate-400 block uppercase">Recaudado</span>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+
+                // 2. Cargar conciliación diaria
+                const reconRes = await fetch(`${API_BASE}/admin/payments/reconciliation?date=${targetDate}`, {
+                    headers: { 'Authorization': `Bearer ${currentAuth.token}` }
+                });
+
+                if (reconRes.ok) {
+                    const reconData = await reconRes.json();
+                    document.getElementById('reconcil-count-badge').textContent = `${reconData.totalTransactions} pagos`;
+
+                    const reconcilTbody = document.getElementById('reconcil-tbody');
+                    const payments = reconData.payments || [];
+
+                    if (payments.length === 0) {
+                        reconcilTbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-slate-400">Sin pagos registrados en ${targetDate}.</td></tr>`;
+                    } else {
+                        reconcilTbody.innerHTML = payments.map(p => `
+                            <tr class="hover:bg-slate-50 transition">
+                                <td class="px-2.5 py-2 font-semibold text-slate-900">${p.reservationId}</td>
+                                <td class="px-2.5 py-2 text-right font-mono font-bold">$${p.amount.toFixed(2)}</td>
+                                <td class="px-2.5 py-2">${p.paymentMethod}</td>
+                                <td class="px-2.5 py-2 font-mono text-[10px] text-slate-500">${p.referenceNumber || 'N/A'}</td>
+                                <td class="px-2.5 py-2 text-center">${getStatusBadge(p.status)}</td>
+                                <td class="px-2.5 py-2 text-slate-500 text-[10px]">${p.createdAt ? p.createdAt.split('T')[1].substring(0, 8) : ''}</td>
+                            </tr>
+                        `).join('');
+                    }
+                }
+            } catch (err) {
+                showToast('error', 'Error en reportes', err.message);
+            }
+        }
+
+        // -------------------------------------------------------------
+        // HELPERS VISUALES (BADGES Y FECHAS)
+        // -------------------------------------------------------------
+        function getStatusBadge(status) {
+            switch(status) {
+                case 'PAID':
+                    return '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">✓ PAID</span>';
+                case 'PENDING_VERIFICATION':
+                    return '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">⏳ PENDING VERIF</span>';
+                case 'PENDING_CASH':
+                    return '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 text-sky-800 border border-sky-200">💵 PENDING CASH</span>';
+                case 'REJECTED':
+                    return '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">✕ REJECTED</span>';
+                default:
+                    return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-800">${status}</span>`;
+            }
+        }
+
+        function formatDate(isoStr) {
+            if (!isoStr) return '-';
+            try {
+                return isoStr.replace('T', ' ').substring(0, 19) + ' UTC';
+            } catch(e) {
+                return isoStr;
+            }
+        }
+
+        // -------------------------------------------------------------
+        // SISTEMA DE NOTIFICACIONES TOAST (RFC 7807 HANDLER)
+        // -------------------------------------------------------------
+        function showProblemDetailError(problem, status) {
+            const title = problem.title || `Error HTTP ${status}`;
+            let detail = problem.detail || 'Ocurrió un error inesperado al procesar la solicitud.';
+
+            if (problem.errors && Array.isArray(problem.errors)) {
+                detail += '<br><ul class="list-disc pl-4 mt-1 text-[11px]">' +
+                    problem.errors.map(e => `<li>${e.field ? `<b>${e.field}:</b> ` : ''}${e.message || e.defaultMessage}</li>`).join('') +
+                    '</ul>';
+            }
+
+            showToast('error', title, detail);
+        }
+
+        function showToast(type, title, message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            let borderClass = 'border-slate-300';
+            let bgClass = 'bg-white';
+            let textClass = 'text-slate-800';
+            let icon = 'ℹ️';
+
+            if (type === 'success') {
+                borderClass = 'border-emerald-300';
+                bgClass = 'bg-emerald-50';
+                textClass = 'text-emerald-900';
+                icon = '✅';
+            } else if (type === 'error') {
+                borderClass = 'border-rose-300';
+                bgClass = 'bg-rose-50';
+                textClass = 'text-rose-900';
+                icon = '❌';
+            } else if (type === 'warning') {
+                borderClass = 'border-amber-300';
+                bgClass = 'bg-amber-50';
+                textClass = 'text-amber-900';
+                icon = '⚠️';
+            } else if (type === 'info') {
+                borderClass = 'border-brand-300';
+                bgClass = 'bg-brand-50';
+                textClass = 'text-brand-900';
+                icon = 'ℹ️';
+            }
+
+            toast.className = `p-3.5 rounded-xl border shadow-lg ${borderClass} ${bgClass} transform transition-all duration-300 flex items-start space-x-2.5`;
+            toast.innerHTML = `
+                <span class="text-base leading-none">${icon}</span>
+                <div class="flex-1 text-xs">
+                    <p class="font-bold ${textClass}">${title}</p>
+                    <div class="mt-0.5 text-slate-600 leading-relaxed">${message}</div>
+                </div>
+                <button onclick="this.parentElement.remove()" class="text-slate-400 hover:text-slate-600 font-bold text-sm leading-none">&times;</button>
+            `;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-x-4');
+                setTimeout(() => toast.remove(), 300);
+            }, 6000);
+        }
+    </script>
+</body>
+</html>
